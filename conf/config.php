@@ -6,7 +6,6 @@ return [
     'task_redis' => [
         'host' => '127.0.0.1',
         'port' => 6379,
-        'timeout' => 10,
         'list_name' => 'qiandao#tasks'
     ],
     /**
