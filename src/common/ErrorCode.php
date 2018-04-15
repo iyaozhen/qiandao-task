@@ -4,7 +4,8 @@
  * Date: 2018-03-10
  */
 
-namespace Qiandao;
+namespace Qiandao\common;
+
 
 class ErrorCode
 {
