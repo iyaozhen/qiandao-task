@@ -6,8 +6,9 @@
 
 namespace Qiandao;
 
-use Swoole;
 use Psr\Log\LoggerInterface;
+use Swoole;
+
 
 class Tasker
 {
@@ -38,9 +39,29 @@ class Tasker
 
         while (true) {
             $taskData = $worker->pop();
-            $this->log->debug($taskData);
+            $this->log->debug('task data', $taskData);
             if ($taskData !== false) {
-                continue;
+                $taskInfo = unserialize($taskData);
+                $taskId = $taskInfo['task_id'];
+                $taskName = $taskInfo['task_name'];
+                $taskParams = $taskInfo['task_params'];
+                $taskClass = "\\Qiandao\\tasks\\$taskName";
+                /**
+                 * @var $taskObj \Qiandao\tasks\AbstractTask
+                 */
+                $taskObj = new $taskClass($taskParams);
+                $checkResult = $taskObj->checkParams();
+                if ($checkResult['code'] == 200) {
+                    $runResult = $taskObj->run();
+                    if ($runResult['code'] == 200) {
+                        // TODO update $taskId status
+                        $this->log->info("$taskClass run success", $taskInfo);
+                    } else {
+                        $this->log->error("$taskClass run failure", $taskInfo);
+                    }
+                } else {
+                    $this->log->error("$taskClass check params failure", $taskInfo);
+                }
             } else {
                 $this->log->error('pop from queue failure', $worker->statQueue());
             }

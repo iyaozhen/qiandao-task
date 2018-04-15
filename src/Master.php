@@ -6,10 +6,12 @@
 
 namespace Qiandao;
 
-use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
+use Monolog\Logger;
 use Monolog\Processor\MemoryUsageProcessor;
+use Qiandao\common\ErrorCode;
 use Swoole;
+
 
 class Master
 {
@@ -17,6 +19,8 @@ class Master
     private $taskers = [];
     private $reactors = [];
     private $stopping = false;
+    private $pid;
+    private $pidFile = __DIR__ . '/../bin/run.pid';
     /**
      * @var Logger
      */
@@ -39,17 +43,21 @@ class Master
     {
         // 守护进程
         Swoole\Process::daemon();
-
-        set_error_handler([$this, 'errorHandler']);
-
         cli_set_process_title('qiandao: master process');
-        $this->conf = $config;
 
+        $this->conf = $config;
         $this->masterLogger = new Logger('qiandao:master');
         $this->masterLogger->pushHandler(
             new StreamHandler(__DIR__ . '/../log/run.log', $this->conf['log_level'])
         );
         $this->masterLogger->pushProcessor(new MemoryUsageProcessor());
+        // 自定义错误处理，将php错误写入日志
+        set_error_handler([$this, 'errorHandler']);
+
+        $this->pid = getmypid();
+        file_put_contents($this->pidFile, $this->pid);
+        // 退出时删除pid文件
+        register_shutdown_function('unlink', $this->pidFile);
 
         $this->reactorLogger = new Logger('qiandao:reactor');
         $this->reactorLogger->pushHandler(
@@ -69,6 +77,7 @@ class Master
      */
     public function run()
     {
+        $this->masterLogger->info("master pid=" . $this->pid);
         $this->runTasker();
         $this->runReactor();
 
@@ -124,8 +133,7 @@ class Master
             foreach ($this->taskers as $pid => $process) {
                 if (Swoole\Process::kill($pid, 0)) {
                     $this->masterLogger->info("tasker ok, pid=$pid");
-                }
-                else {
+                } else {
                     unset($this->taskers[$pid]);
                     $this->masterLogger->error("tasker not exit, pid=$pid");
                 }
@@ -135,8 +143,7 @@ class Master
             foreach ($this->reactors as $pid => $process) {
                 if (Swoole\Process::kill($pid, 0)) {
                     $this->masterLogger->info("reactor ok, pid=$pid");
-                }
-                else {
+                } else {
                     unset($this->reactors[$pid]);
                     $this->masterLogger->error("reactor not exit, pid=$pid");
                 }

@@ -6,10 +6,12 @@
 
 namespace Qiandao;
 
-use Swoole;
 use Psr\Log\LoggerInterface;
+use Qiandao\common\ErrorCode;
 use Qiandao\redis\RedisWrap;
-use \RedisException;
+use RedisException;
+use Swoole;
+
 
 class Reactor
 {

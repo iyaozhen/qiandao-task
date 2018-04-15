@@ -9,6 +9,7 @@ namespace Qiandao\redis;
 use \Redis;
 use \RedisException;
 
+
 class RedisWrap
 {
     private static $_instance;
